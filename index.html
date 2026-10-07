@@ -7,8 +7,18 @@
 <meta name="referrer" content="no-referrer">
 <title>How Is Thread Formed?</title>
 <meta name="description" content="Paste a Bluesky thread and watch cavemen act it out, shoving each other off screen to have their say.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="How Is Thread Formed?">
+<meta property="og:title" content="how is thread formed?">
+<meta property="og:description" content="Watch this Bluesky thread acted out by cavemen.">
+<meta property="og:url" content="https://jsherman999.github.io/how_is_bluesky_formed-/">
+<meta property="og:image" content="https://jsherman999.github.io/how_is_bluesky_formed-/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Cartoon cavemen ganging up on another caveman, above the words: how is thread formed?">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="css/app.css?v=2">
+<link rel="stylesheet" href="css/app.css?v=3">
 </head>
 <body>
 <header class="masthead">
@@ -70,9 +80,9 @@
         <label>Speed
           <select id="speed">
             <option value="0.8">Slow, like the original</option>
-            <option value="1" selected>Normal</option>
+            <option value="1">Normal</option>
             <option value="1.25">Faster</option>
-            <option value="1.5">Fast</option>
+            <option value="1.5" selected>Fast</option>
           </select>
         </label>
       </section>
@@ -125,6 +135,7 @@
       </button>
       <button type="button" class="btn btn-small" id="record" title="Save as a video file">Record video</button>
       <button type="button" class="btn btn-small" id="share" title="Copy a link that replays this thread">Copy link</button>
+      <button type="button" class="btn btn-small" id="reply-link" title="Reply in the Bluesky thread with a link to this cartoon" hidden>Post link in thread</button>
     </div>
   </section>
 
@@ -138,6 +149,28 @@
       <ol id="order" class="order"></ol>
     </div>
   </section>
+
+  <dialog id="reply-dialog">
+    <form method="dialog">
+      <h3>Post the cartoon link in the thread?</h3>
+      <p>This replies to <strong id="reply-to"></strong> as <strong id="reply-as"></strong>:</p>
+      <div class="reply-preview">
+        <p class="reply-text">how is thread formed?</p>
+        <div class="reply-card">
+          <img src="og.jpg" alt="" width="1200" height="630">
+          <div class="reply-card-text">
+            <b>how is thread formed?</b>
+            <span>Watch this Bluesky thread acted out by cavemen.</span>
+            <small id="reply-host"></small>
+          </div>
+        </div>
+      </div>
+      <div class="row end">
+        <button value="cancel" class="btn">Cancel</button>
+        <button value="post" class="btn btn-primary">Post reply</button>
+      </div>
+    </form>
+  </dialog>
 
   <dialog id="rec-dialog">
     <form method="dialog">
@@ -155,6 +188,6 @@
   <p>Nothing here has a server. Your browser talks directly to Bluesky, and to OpenAI only if you add a key. Inspired by the 2008 cartoon <a href="https://www.youtube.com/watch?v=vun48RsW-3Y" target="_blank" rel="noopener">“How is babby formed?”</a></p>
 </footer>
 
-<script type="module" src="js/app.js?v=2"></script>
+<script type="module" src="js/app.js?v=3"></script>
 </body>
 </html>

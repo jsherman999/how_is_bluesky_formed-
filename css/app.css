@@ -356,6 +356,18 @@ dialog {
 dialog::backdrop { background: rgba(20, 14, 10, 0.45); }
 dialog h3 { margin-top: 0; }
 
+.reply-preview {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: var(--panel-2);
+}
+.reply-text { margin: 0 0 10px; font: 16px/1.4 Arial, Helvetica, sans-serif; color: var(--blue); }
+.reply-card { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--panel); }
+.reply-card img { display: block; width: 100%; height: auto; }
+.reply-card-text { display: grid; gap: 2px; padding: 8px 10px; font: 13px/1.35 Arial, Helvetica, sans-serif; }
+.reply-card-text small { color: var(--muted); }
+
 .foot {
   max-width: 1040px;
   margin: 0 auto;

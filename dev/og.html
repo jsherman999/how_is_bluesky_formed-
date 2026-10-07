@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Link card image</title>
+<!-- Renders og.jpg, the link-preview image. Regenerate with:
+     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --hide-scrollbars \
+       --window-size=1200,630 --screenshot=og.png http://localhost:8426/dev/og.html
+     sips -s format jpeg -s formatOptions 82 og.png --out og.jpg -->
+<style>html,body{margin:0;overflow:hidden;background:#fff}canvas{display:block}</style>
+</head>
+<body>
+<canvas id="c" width="1200" height="630"></canvas>
+<script type="module">
+import { getBackdrop, SCENE_W, SCENE_H, GROUND_Y } from '../js/scene.js';
+import { makeLook, drawCaveman, defaultPose } from '../js/caveman.js';
+
+const ctx = document.getElementById('c').getContext('2d');
+const s = 1200 / SCENE_W;
+const sceneH = SCENE_H * s;
+
+ctx.save();
+ctx.scale(s, s);
+ctx.drawImage(getBackdrop(), 0, 0, SCENE_W, SCENE_H);
+
+function caveman(did, x, scale, facing, pose, depth = 0) {
+  ctx.save();
+  ctx.translate(x * SCENE_W, GROUND_Y - depth * 26);
+  ctx.scale(scale * facing, scale);
+  drawCaveman(ctx, makeLook(did), Object.assign(defaultPose(), { t: 1.3 }, pose));
+  ctx.restore();
+}
+
+const mob = { brow: 'angry', anger: 1, weapon: true, mouth: 0.55 };
+caveman('did:example:mag', 0.74, 0.8, -1, { ...mob, armF: [-2.05, -0.5], armB: [-0.6, -1.7] }, 1);
+caveman('did:example:bonk', 0.9, 0.8, -1, { ...mob, armF: [-1.8, -0.5], armB: [-0.8, -1.6], mouth: 0.8 }, 1);
+caveman('did:example:grok', 0.66, 0.9, -1, { ...mob, armF: [-1.95, -0.45], armB: [-0.7, -1.7] });
+caveman('did:example:lorp', 0.82, 0.9, -1, { ...mob, armF: [-2.1, -0.55], armB: [-0.5, -1.8], mouth: 0.3 });
+caveman('did:example:ug', 0.16, 0.8, 1, { brow: 'worried', sweat: 1, squash: 0.93, lean: -0.1, armF: [-0.55, -2.35], armB: [-0.4, -2.1], mouth: 0.2 });
+caveman('did:example:thog', 0.45, 1, -1, { brow: 'angry', mouth: 0.9, armF: [-0.05, -0.35], armB: [1.4, -0.3], lean: 0.18 });
+ctx.restore();
+
+// the post panel, like the app's card
+ctx.fillStyle = '#2a1d14';
+ctx.fillRect(0, sceneH - 3, 1200, 5);
+ctx.fillStyle = '#f1f5f9';
+ctx.fillRect(0, sceneH + 2, 1200, 40);
+ctx.fillStyle = '#ffffff';
+ctx.fillRect(0, sceneH + 42, 1200, 630 - sceneH - 42);
+
+ctx.save();
+ctx.translate(40, sceneH + 23);
+ctx.scale(1.1, 1.1);
+ctx.fillStyle = '#1185fe';
+for (const side of [-1, 1]) {
+  ctx.beginPath();
+  ctx.moveTo(0, 2);
+  ctx.bezierCurveTo(side * 4, -8, side * 16, -14, side * 18, -8);
+  ctx.bezierCurveTo(side * 20, -2, side * 12, 4, side * 6, 5);
+  ctx.bezierCurveTo(side * 14, 8, side * 12, 16, side * 6, 14);
+  ctx.bezierCurveTo(side * 2, 12, 0, 6, 0, 2);
+  ctx.fill();
+}
+ctx.restore();
+ctx.font = 'bold 21px Arial, Helvetica, sans-serif';
+ctx.fillStyle = '#334155';
+ctx.textBaseline = 'middle';
+ctx.fillText('Bluesky thread', 72, sceneH + 23);
+
+ctx.font = 'bold 76px Arial, Helvetica, sans-serif';
+ctx.fillStyle = '#0f172a';
+ctx.textBaseline = 'alphabetic';
+ctx.fillText('how is thread formed?', 40, sceneH + 150);
+document.title = 'ready';
+</script>
+</body>
+</html>

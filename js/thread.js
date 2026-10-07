@@ -93,6 +93,8 @@ export function normalizePost(p) {
     repostCount: p.repostCount || 0,
     parentUri: (r.reply && r.reply.parent && r.reply.parent.uri) || null,
     rootUri: (r.reply && r.reply.root && r.reply.root.uri) || null,
+    rootCid: (r.reply && r.reply.root && r.reply.root.cid) || null,
+    replyDisabled: !!(p.viewer && p.viewer.replyDisabled),
     images,
     quote,
     external,

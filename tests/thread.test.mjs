@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseThreadLink, buildTree, orderPosts, makeBeats, makeCast, analyzePileOns,
-  speechText, guessStance, cidFromCdnUrl,
+  speechText, guessStance, cidFromCdnUrl, normalizePost,
 } from '../js/thread.js';
 import { demoThread } from '../js/demo.js';
 import { layoutFor, mobSlot } from '../js/stage.js';
@@ -116,4 +116,16 @@ test('cast keeps first-appearance order', () => {
   const cast = makeCast(demoBeats());
   assert.deepEqual([...cast.values()].map((c) => c.handle).slice(0, 3), ['ug.example', 'thog.example', 'grok.example']);
   assert.equal(cast.get('did:example:ug').posts, 4);
+});
+
+test('keeps the root reference a reply needs', () => {
+  const p = normalizePost({
+    uri: 'at://did:example:b/app.bsky.feed.post/2', cid: 'cidB',
+    author: { did: 'did:example:b', handle: 'b.example' },
+    record: { text: 'hi', reply: { root: { uri: 'at://did:example:a/app.bsky.feed.post/1', cid: 'cidA' }, parent: { uri: 'at://x', cid: 'cidX' } } },
+    viewer: { replyDisabled: true },
+  });
+  assert.equal(p.rootUri, 'at://did:example:a/app.bsky.feed.post/1');
+  assert.equal(p.rootCid, 'cidA');
+  assert.equal(p.replyDisabled, true);
 });

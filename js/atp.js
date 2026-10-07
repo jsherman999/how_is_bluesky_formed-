@@ -101,6 +101,74 @@ export function query(nsid, params) {
   return publicQuery(nsid, params);
 }
 
+/** Writes always go to the signed-in user's own PDS. */
+function procedure(nsid, body) {
+  if (!session.current) return Promise.reject(new XrpcError('Sign in first.', 401, 'AuthRequired'));
+  const pds = session.current.pds;
+  return withFreshToken((token) => request(pds, nsid, { method: 'POST', body, token }));
+}
+
+function uploadBlob(blob) {
+  const pds = session.current.pds;
+  return withFreshToken(async (token) => {
+    let res;
+    try {
+      res = await fetch(pds + '/xrpc/com.atproto.repo.uploadBlob', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': blob.type || 'image/jpeg' },
+        body: blob,
+      });
+    } catch {
+      throw new XrpcError('Could not reach your Bluesky server.', 0, 'NetworkError');
+    }
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new XrpcError((data && (data.message || data.error)) || 'HTTP ' + res.status, res.status, data && data.error);
+    return data.blob;
+  });
+}
+
+/**
+ * Replies under `parent` ({ uri, cid, rootUri, rootCid }) with `text`
+ * linked to `url`, plus a link card whose picture is fetched from this
+ * site (card.image) and uploaded to the user's PDS.
+ */
+export async function postLinkReply({ parent, text, url, card }) {
+  if (!session.current) throw new XrpcError('Sign in first.', 401, 'AuthRequired');
+  let thumb;
+  if (card.image) {
+    try {
+      const res = await fetch(card.image);
+      if (res.ok) {
+        const img = await res.blob();
+        if (img.size < 950000) thumb = await uploadBlob(img);
+      }
+    } catch { /* post without a picture rather than not at all */ }
+  }
+  const record = {
+    $type: 'app.bsky.feed.post',
+    text,
+    createdAt: new Date().toISOString(),
+    langs: ['en'],
+    facets: [{
+      index: { byteStart: 0, byteEnd: new TextEncoder().encode(text).length },
+      features: [{ $type: 'app.bsky.richtext.facet#link', uri: url }],
+    }],
+    reply: {
+      root: { uri: parent.rootUri || parent.uri, cid: parent.rootCid || parent.cid },
+      parent: { uri: parent.uri, cid: parent.cid },
+    },
+    embed: {
+      $type: 'app.bsky.embed.external',
+      external: { uri: url, title: card.title, description: card.description, ...(thumb ? { thumb } : {}) },
+    },
+  };
+  return procedure('com.atproto.repo.createRecord', {
+    repo: session.current.did,
+    collection: 'app.bsky.feed.post',
+    record,
+  });
+}
+
 /* ------------------------------------------------------------ identity */
 
 export function normalizeHandle(input) {

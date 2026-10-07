@@ -28,22 +28,37 @@ Options:
 - **Bluesky sign-in (optional).** Public threads load anonymously. Sign
   in with your handle and an
   [app password](https://bsky.app/settings/app-passwords) to include posts
-  from accounts that hide from logged-out viewers and to get a YOU tag
-  over your caveman.
+  from accounts that hide from logged-out viewers, to get a YOU tag over
+  your caveman, and to post the cartoon link into the thread.
 - **Voices.** *Browser voices* are free, with a different voice and pitch
-  per caveman. *OpenAI voices* use your API key and `gpt-4o-mini-tts`,
+  per caveman, and they're the default. *OpenAI voices* use your API key and `gpt-4o-mini-tts`,
   which is told to read like the original: slowly, earnestly, typos and
   all. *Silent* plays with no voice.
 - **OpenAI key (optional).** Besides voices, a key enables **Record
   video** with sound and smarter pile-on detection. Detection takes one
   small chat call per thread to label each reply as attack, support or
   neutral.
+- **Speed** starts at Fast (1.5×). *Slow* is closest to the original.
 - **Thread.** If the link points at a reply, play either that reply's
   branch (what led to it plus its replies) or the whole thread from the
   top. The post limit keeps the liveliest branches.
 
-**Copy link** gives a URL like `?t=<bsky link>` that rebuilds the same
-cartoon for anyone who opens it.
+## Linking to it from a Bluesky thread
+
+Any link of the form
+`https://jsherman999.github.io/how_is_bluesky_formed-/?t=<bsky.app post link>`
+opens the page with that thread already loaded and waiting for play.
+**Copy link** gives you that link for the thread on screen.
+
+**Post link in thread** does it for you. When you're signed in, it
+replies to the post you loaded with the text **how is thread formed?**.
+The whole text is the link, and a preview card with the cartoon image
+sits under it. A dialog shows the reply before anything is posted.
+
+Pasting the link into the Bluesky composer by hand gets the same card,
+because the page carries Open Graph tags pointing at `og.jpg`. Every
+thread uses the same card, since the page is static. To redraw the
+picture, edit `dev/og.html` and follow the commands in its comment.
 
 ## How the running order and pile-ons work
 

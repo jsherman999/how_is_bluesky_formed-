@@ -15,7 +15,10 @@ import { TTS_MODELS, listModelIds, pickChatModel, classifyStances, verifyKey } f
 import { demoThread } from './demo.js';
 
 const $ = (id) => document.getElementById(id);
-const PREFS_KEY = 'threadformed.prefs';
+const PREFS_KEY = 'threadformed.prefs.v2'; // v2: defaults changed to fast + browser voices
+const PUBLIC_BASE = 'https://jsherman999.github.io/how_is_bluesky_formed-/';
+const REPLY_TEXT = 'how is thread formed?';
+const CARD = { title: 'how is thread formed?', description: 'Watch this Bluesky thread acted out by cavemen.' };
 const OPENAI_KEY = 'threadformed.openai';
 
 /* ------------------------------------------------------------ storage */
@@ -52,7 +55,7 @@ const stage = new Stage(canvas, {
 
 const avatars = new Map();
 const images = new Map();
-let current = { beats: [], cast: new Map(), episodes: [], link: '', demo: false };
+let current = { beats: [], cast: new Map(), episodes: [], link: '', demo: false, replyTo: null, replied: false };
 let loadToken = 0;
 
 const assets = {
@@ -89,7 +92,7 @@ const player = new Player({
 
 /* ------------------------------------------------------------ prefs + options */
 
-const prefs = Object.assign({ voice: 'browser', model: TTS_MODELS[0].id, speed: '1', from: 'post', max: '20', tags: true, stance: true }, readPrefs());
+const prefs = Object.assign({ voice: 'browser', model: TTS_MODELS[0].id, speed: '1.5', from: 'post', max: '20', tags: true, stance: true }, readPrefs());
 
 function setupOptions() {
   const sel = $('tts-model');
@@ -174,10 +177,31 @@ function setupSignIn() {
 
 /* ------------------------------------------------------------ loading */
 
-function setStatus(msg, isError = false) {
+function setStatus(msg, isError = false, link = null) {
   const el = $('status');
   el.textContent = msg;
   el.classList.toggle('error', !!isError);
+  if (link) {
+    const a = document.createElement('a');
+    a.href = link.href;
+    a.textContent = link.text;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    el.append(' ', a);
+  }
+}
+
+/**
+ * The public link for a thread. Built from the canonical bsky.app URL of
+ * the linked post, and always pointing at the Pages site when running
+ * locally so posted links work for everyone.
+ */
+function shareUrl() {
+  const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  const u = new URL(local ? PUBLIC_BASE : location.origin + location.pathname);
+  u.searchParams.set('t', current.link);
+  if (current.from === 'root') u.searchParams.set('from', 'root');
+  return u.toString();
 }
 
 async function stanceUp(beats, token) {
@@ -222,14 +246,15 @@ async function loadThread(input, { autoplay = false } = {}) {
     const did = await atp.resolveHandle(link.actor);
     let res = await atp.getPostThread(postUri(did, link.rkey));
     let tree = buildTree(res.thread);
-    const root = tree.focus.post.rootUri;
+    const linked = tree.focus.post;
+    const root = linked.rootUri;
     if (prefs.from === 'root' && root && root !== tree.focus.post.uri) {
       setStatus('Climbing to the top of the thread…');
       res = await atp.getPostThread(root);
       tree = buildTree(res.thread);
     }
     if (token !== loadToken) return;
-    await present(tree, { link: input.trim(), demo: false, token, autoplay });
+    await present(tree, { link: webUrlFor(linked), replyTo: linked, demo: false, token, autoplay });
   } catch (err) {
     if (token !== loadToken) return;
     const msg = err.status === 400 && /not found/i.test(err.message) ? 'That post was not found. It may have been deleted.' : err.message;
@@ -239,7 +264,7 @@ async function loadThread(input, { autoplay = false } = {}) {
   }
 }
 
-async function present(tree, { link, demo, token, autoplay }) {
+async function present(tree, { link, replyTo = null, demo, token, autoplay }) {
   const max = parseInt(prefs.max, 10) || Infinity;
   const posts = orderPosts(tree.focus, tree.ancestors, max);
   const total = countPosts(tree.focus, tree.ancestors);
@@ -253,7 +278,7 @@ async function present(tree, { link, demo, token, autoplay }) {
     if (t) t.piledOn++;
     for (const a of ep.attackers) { const c = cast.get(a); if (c) c.piledOnBy++; }
   }
-  current = { beats, cast, episodes, link, demo };
+  current = { beats, cast, episodes, link, demo, replyTo, replied: false, from: prefs.from };
   await narrator.assignVoices(cast);
   if (token !== loadToken) return;
 
@@ -267,6 +292,7 @@ async function present(tree, { link, demo, token, autoplay }) {
   $('below').hidden = false;
   $('big-play').hidden = false;
   $('scrub').max = String(Math.max(0, beats.length - 1));
+  syncReplyButton();
   renderCast();
   renderOrder();
   highlightBeat(0);
@@ -425,12 +451,13 @@ function setupControls() {
   $('share').addEventListener('click', async () => {
     if (current.demo || !current.link) { setStatus('Load a real thread to get a share link.'); return; }
     try {
-      await navigator.clipboard.writeText(location.href);
+      await navigator.clipboard.writeText(shareUrl());
       setStatus('Link copied. Anyone who opens it gets the same cartoon.');
     } catch {
-      setStatus('Copy this link: ' + location.href);
+      setStatus('Copy this link: ' + shareUrl());
     }
   });
+  $('reply-link').addEventListener('click', replyWithLink);
   $('record').addEventListener('click', async () => {
     if (recorder.active) { finishRecording(true); return; }
     if (!narrator.recordable) {
@@ -450,6 +477,55 @@ function setupControls() {
     else if (e.key === 'ArrowRight') player.next();
     else if (e.key === 'ArrowLeft') player.prev();
   });
+}
+
+function syncReplyButton() {
+  const btn = $('reply-link');
+  btn.hidden = current.demo || !current.replyTo;
+  btn.disabled = current.replied;
+  btn.textContent = current.replied ? 'Posted in thread ✓' : 'Post link in thread';
+}
+
+async function replyWithLink() {
+  const target = current.replyTo;
+  if (!target || current.replied) return;
+  if (!atp.session.current) {
+    $('options').open = true;
+    $('bsky-handle').focus();
+    setStatus('Sign in with your handle and an app password (in Options) to post the link in the thread.');
+    return;
+  }
+  if (target.replyDisabled) {
+    setStatus('Replies to that post are limited, so Bluesky won\'t accept one from you.', true);
+    return;
+  }
+  const d = $('reply-dialog');
+  $('reply-to').textContent = '@' + target.handle;
+  $('reply-as').textContent = '@' + atp.session.current.handle;
+  $('reply-host').textContent = new URL(shareUrl()).host;
+  d.returnValue = '';
+  d.showModal();
+  const ok = await new Promise((r) => d.addEventListener('close', () => r(d.returnValue === 'post'), { once: true }));
+  if (!ok) return;
+
+  const btn = $('reply-link');
+  btn.disabled = true;
+  setStatus('Posting…');
+  try {
+    const res = await atp.postLinkReply({
+      parent: target,
+      text: REPLY_TEXT,
+      url: shareUrl(),
+      card: { ...CARD, image: new URL('og.jpg', location.href).toString() },
+    });
+    current.replied = true;
+    const rkey = res.uri.split('/').pop();
+    setStatus('Posted.', false, { href: `https://bsky.app/profile/${atp.session.current.handle}/post/${rkey}`, text: 'See it on Bluesky' });
+  } catch (err) {
+    setStatus('Could not post the reply: ' + err.message, true);
+  } finally {
+    syncReplyButton();
+  }
 }
 
 function startRecording() {
