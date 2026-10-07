@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseThreadLink, buildTree, orderPosts, makeBeats, makeCast, analyzePileOns,
-  speechText, guessStance, cidFromCdnUrl, normalizePost,
+  speechText, guessStance, cidFromCdnUrl, normalizePost, threadCandidates, retitleLinkPosts,
 } from '../js/thread.js';
 import { demoThread } from '../js/demo.js';
 import { layoutFor, mobSlot } from '../js/stage.js';
@@ -128,4 +128,36 @@ test('keeps the root reference a reply needs', () => {
   assert.equal(p.rootUri, 'at://did:example:a/app.bsky.feed.post/1');
   assert.equal(p.rootCid, 'cidA');
   assert.equal(p.replyDisabled, true);
+});
+
+test('finds the threads a link was posted in, newest first, one per thread', () => {
+  const HP = 'someone.github.io/app';
+  const view = (uri, handle, at, link, root) => ({
+    uri, author: { handle },
+    record: {
+      text: 'look', createdAt: at,
+      facets: link ? [{ index: { byteStart: 0, byteEnd: 4 }, features: [{ $type: 'app.bsky.richtext.facet#link', uri: link }] }] : [],
+      ...(root ? { reply: { root: { uri: root }, parent: { uri: root } } } : {}),
+    },
+  });
+  const posts = [
+    view('at://a/p/1', 'a.example', '2026-10-07T10:00:00Z', 'https://someone.github.io/app/?thread', 'at://r/p/1'),
+    view('at://b/p/2', 'b.example', '2026-10-07T12:00:00Z', 'https://someone.github.io/app/?thread', 'at://r/p/2'),
+    view('at://c/p/3', 'c.example', '2026-10-07T11:00:00Z', 'https://someone.github.io/app/?thread', 'at://r/p/1'),
+    view('at://d/p/4', 'd.example', '2026-10-07T13:00:00Z', 'https://elsewhere.example/', 'at://r/p/9'),
+    view('at://e/p/5', 'e.example', '2026-10-07T09:00:00Z', 'https://someone.github.io/app/?thread', null),
+  ];
+  const c = threadCandidates(posts, HP);
+  assert.deepEqual(c.map((x) => x.rootUri), ['at://r/p/2', 'at://r/p/1', 'at://e/p/5']);
+  assert.equal(c[1].by, 'c.example', 'keeps the newest link in a thread');
+});
+
+test('link-only posts get a line to say', () => {
+  const mk = (text, links) => ({ post: { text, links }, children: [] });
+  const a = mk('jsherman999.github.io/how_is_blu...', ['https://jsherman999.github.io/how_is_bluesky_formed-/?thread']);
+  const b = mk('lol watch this jsherman999.github.io/how_is_blu...', ['https://jsherman999.github.io/how_is_bluesky_formed-/?thread']);
+  const root = { post: { text: 'root', links: [] }, children: [a, b] };
+  retitleLinkPosts({ focus: root, ancestors: [] }, 'jsherman999.github.io/how_is_bluesky_formed-');
+  assert.equal(a.post.text, 'how is thread formed?');
+  assert.equal(b.post.text, 'lol watch this jsherman999.github.io/how_is_blu...');
 });

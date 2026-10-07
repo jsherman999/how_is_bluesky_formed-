@@ -3,7 +3,7 @@
 import * as atp from './atp.js';
 import {
   parseThreadLink, postUri, buildTree, orderPosts, makeBeats, makeCast,
-  analyzePileOns, countPosts, cidFromCdnUrl, webUrlFor,
+  analyzePileOns, countPosts, cidFromCdnUrl, webUrlFor, threadCandidates, retitleLinkPosts,
 } from './thread.js';
 import { Stage } from './stage.js';
 import { Narrator } from './voice.js';
@@ -18,6 +18,7 @@ const $ = (id) => document.getElementById(id);
 const PREFS_KEY = 'threadformed.prefs.v2'; // v2: defaults changed to fast + browser voices
 const PUBLIC_BASE = 'https://jsherman999.github.io/how_is_bluesky_formed-/';
 const REPLY_TEXT = 'how is thread formed?';
+const GENERIC_PARAM = 'thread'; // ?thread = "work out which thread this link was posted in"
 const CARD = { title: 'how is thread formed?', description: 'Watch this Bluesky thread acted out by cavemen.' };
 const OPENAI_KEY = 'threadformed.openai';
 
@@ -183,13 +184,26 @@ function setStatus(msg, isError = false, link = null) {
   el.classList.toggle('error', !!isError);
   if (link) {
     const a = document.createElement('a');
-    a.href = link.href;
     a.textContent = link.text;
-    a.target = '_blank';
-    a.rel = 'noopener';
+    if (link.onClick) {
+      a.href = '#';
+      a.addEventListener('click', (e) => { e.preventDefault(); link.onClick(); });
+    } else {
+      a.href = link.href;
+      a.target = '_blank';
+      a.rel = 'noopener';
+    }
     el.append(' ', a);
   }
 }
+
+/** Where this app lives publicly (the Pages site when running locally). */
+function appBase() {
+  const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  return local ? PUBLIC_BASE : location.origin + location.pathname;
+}
+const hostPath = () => appBase().replace(/^https?:\/\//, '').replace(/\/$/, '');
+const genericLink = () => appBase() + '?' + GENERIC_PARAM;
 
 /**
  * The public link for a thread. Built from the canonical bsky.app URL of
@@ -197,8 +211,7 @@ function setStatus(msg, isError = false, link = null) {
  * locally so posted links work for everyone.
  */
 function shareUrl() {
-  const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-  const u = new URL(local ? PUBLIC_BASE : location.origin + location.pathname);
+  const u = new URL(appBase());
   u.searchParams.set('t', current.link);
   if (current.from === 'root') u.searchParams.set('from', 'root');
   return u.toString();
@@ -235,6 +248,7 @@ async function stanceUp(beats, token) {
 
 async function loadThread(input, { autoplay = false } = {}) {
   const token = ++loadToken;
+  finder.close();
   const link = parseThreadLink(input);
   if (!link) {
     setStatus("That doesn't look like a Bluesky post link. Copy it from the post's Share menu.", true);
@@ -264,7 +278,7 @@ async function loadThread(input, { autoplay = false } = {}) {
   }
 }
 
-async function present(tree, { link, replyTo = null, demo, token, autoplay }) {
+async function present(tree, { link, replyTo = null, demo, token, autoplay, from = prefs.from, note = '' }) {
   const max = parseInt(prefs.max, 10) || Infinity;
   const posts = orderPosts(tree.focus, tree.ancestors, max);
   const total = countPosts(tree.focus, tree.ancestors);
@@ -278,7 +292,7 @@ async function present(tree, { link, replyTo = null, demo, token, autoplay }) {
     if (t) t.piledOn++;
     for (const a of ep.attackers) { const c = cast.get(a); if (c) c.piledOnBy++; }
   }
-  current = { beats, cast, episodes, link, demo, replyTo, replied: false, from: prefs.from };
+  current = { beats, cast, episodes, link, demo, replyTo, replied: false, from };
   await narrator.assignVoices(cast);
   if (token !== loadToken) return;
 
@@ -303,13 +317,14 @@ async function present(tree, { link, replyTo = null, demo, token, autoplay }) {
   if (total > beats.length) msg += ` (the ${beats.length} liveliest of ${total}; raise the limit in Options)`;
   if (stanceKnown) msg += ' · pile-ons checked by OpenAI';
   if (demo) msg = 'Demo thread (made up). ' + msg;
-  setStatus(msg);
+  if (note) msg = note + ' ' + msg;
+  setStatus(msg, false, note && lastFind && lastFind.cands.length > 1 ? { text: 'Wrong thread?', onClick: showPicker } : null);
 
   if (!demo && link) {
     const url = new URL(location.href);
     url.search = '';
     url.searchParams.set('t', link);
-    if (prefs.from === 'root') url.searchParams.set('from', 'root');
+    if (from === 'root') url.searchParams.set('from', 'root');
     history.replaceState(null, '', url);
   }
   loadAvatars(cast, token);
@@ -329,6 +344,167 @@ async function loadAvatars(cast, token) {
     }
   };
   await Promise.all([worker(), worker(), worker(), worker()]);
+}
+
+/* ------------------------------------------------------------ finding the thread a link came from */
+
+// Browsers don't tell a page which post a link was clicked in, so for the
+// generic ?thread link we ask Bluesky's search which threads contain it.
+
+let lastFind = null; // { cands, roots, token }
+
+const finder = {
+  open() {
+    $('finder').hidden = false;
+    $('generic').hidden = true;
+    $('finder-steps').textContent = '';
+    $('finder-picker').hidden = true;
+    $('finder-cancel').textContent = 'Cancel';
+  },
+  close() {
+    $('finder').hidden = true;
+    $('generic').hidden = false;
+  },
+  step(text, state = 'doing') {
+    const li = document.createElement('li');
+    li.className = state;
+    li.textContent = text;
+    $('finder-steps').append(li);
+    return { set(t, st) { if (t) li.textContent = t; if (st) li.className = st; } };
+  },
+  giveUp(text) {
+    finder.step(text, 'fail');
+    $('finder-cancel').textContent = 'Close';
+    $('thread-url').focus();
+  },
+};
+
+function ago(iso) {
+  const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
+  if (!isFinite(s)) return '';
+  if (s < 60) return 'just now';
+  if (s < 3600) return `${Math.round(s / 60)} min ago`;
+  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
+  const d = Math.round(s / 86400);
+  return `${d} day${d === 1 ? '' : 's'} ago`;
+}
+
+function countdown(seconds, token, onTick) {
+  return new Promise((resolve) => {
+    let left = seconds;
+    onTick(left);
+    const iv = setInterval(() => {
+      if (token !== loadToken) { clearInterval(iv); resolve(false); return; }
+      if (--left <= 0) { clearInterval(iv); resolve(true); } else onTick(left);
+    }, 1000);
+  });
+}
+
+async function findThreadFromLink() {
+  const token = ++loadToken;
+  finder.open();
+  setStatus('');
+  const search = finder.step('Asking Bluesky’s search which threads contain this link…');
+  const t0 = performance.now();
+  const retries = [5, 10, 15];
+  let cands = [];
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await atp.searchPostsLinking(genericLink());
+      if (token !== loadToken) return;
+      cands = threadCandidates(res.posts, hostPath());
+    } catch (err) {
+      if (token !== loadToken) return;
+      search.set(`Bluesky’s search didn’t answer (${err.message}).`, 'fail');
+      return finder.giveUp('Paste the thread’s link in the box above instead.');
+    }
+    if (cands.length || attempt >= retries.length) break;
+    const ok = await countdown(retries[attempt], token, (n) =>
+      search.set(`Bluesky’s search doesn’t list the post yet. New posts can take up to a minute to show up. Checking again in ${n}s…`, 'wait'));
+    if (!ok) return;
+    search.set('Asking Bluesky’s search again…', 'doing');
+  }
+  if (!cands.length) {
+    search.set('Couldn’t find a Bluesky post containing this link.', 'fail');
+    return finder.giveUp('If it was posted a moment ago, reload this page in a minute, or paste the thread’s link in the box above.');
+  }
+  const secs = ((performance.now() - t0) / 1000).toFixed(1);
+  lastFind = { cands, roots: new Map(), token };
+  if (cands.length === 1) {
+    search.set(`Found the thread (${secs}s).`, 'done');
+    return openCandidate(cands[0], token);
+  }
+  search.set(`This link is in ${cands.length} threads (${secs}s).`, 'done');
+  const roots = finder.step('Getting the first post of each thread…');
+  try {
+    const res = await atp.getPosts(cands.slice(0, 25).map((c) => c.rootUri));
+    for (const p of res.posts || []) lastFind.roots.set(p.uri, p);
+  } catch { /* the list still works with less detail */ }
+  if (token !== loadToken) return;
+  roots.set('Pick your thread below.', 'done');
+  showPicker();
+}
+
+function showPicker() {
+  if (!lastFind) return;
+  if ($('finder').hidden) {
+    finder.open();
+    finder.step(`This link is in ${lastFind.cands.length} threads.`, 'done');
+  }
+  const ul = $('finder-list');
+  ul.textContent = '';
+  for (const c of lastFind.cands) {
+    const root = lastFind.roots.get(c.rootUri);
+    const li = document.createElement('li');
+    const b = document.createElement('button');
+    b.type = 'button';
+    const snip = document.createElement('span');
+    snip.className = 'snip';
+    const who = document.createElement('b');
+    who.textContent = root ? '@' + root.author.handle : 'A thread';
+    snip.append(who, ': ' + (root ? (root.record && root.record.text) || '[no text]' : '(first post unavailable)'));
+    const meta = document.createElement('span');
+    meta.className = 'meta';
+    meta.textContent = `link posted by @${c.by} · ${ago(c.linkedAt)}`;
+    b.append(snip, meta);
+    b.addEventListener('click', () => {
+      $('finder-picker').hidden = true;
+      openCandidate(c, ++loadToken);
+    });
+    li.append(b);
+    ul.append(li);
+  }
+  $('finder-picker').hidden = false;
+}
+
+async function openCandidate(c, token) {
+  const step = finder.step('Loading the whole thread…');
+  let tree;
+  try {
+    tree = buildTree((await atp.getPostThread(c.rootUri)).thread);
+  } catch {
+    // the first post may be deleted or hidden; fall back to the link's own branch
+    try {
+      tree = buildTree((await atp.getPostThread(c.linkUri)).thread);
+    } catch (err) {
+      if (token !== loadToken) return;
+      step.set(`Couldn’t load that thread: ${err.message}`, 'fail');
+      return finder.giveUp('Paste the thread’s link in the box above instead.');
+    }
+  }
+  if (token !== loadToken) return;
+  retitleLinkPosts(tree, hostPath());
+  const start = tree.ancestors[0] ? tree.ancestors[0].post : tree.focus.post;
+  step.set(`Loaded the thread @${start.handle} started.`, 'done');
+  await present(tree, {
+    link: webUrlFor(tree.focus.post),
+    replyTo: tree.focus.post,
+    demo: false,
+    token,
+    from: 'root',
+    note: `Found it: the thread where @${c.by} posted this link ${ago(c.linkedAt)}.`,
+  });
+  if (token === loadToken) finder.close();
 }
 
 /* ------------------------------------------------------------ cast + order */
@@ -580,20 +756,38 @@ function boot() {
   });
   $('demo').addEventListener('click', async () => {
     const token = ++loadToken;
+    finder.close();
     $('thread-url').value = '';
     history.replaceState(null, '', location.pathname);
     await present(buildTree(demoThread()), { link: '', demo: true, token, autoplay: false });
   });
+  $('generic-link').textContent = genericLink();
+  $('copy-generic').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(genericLink());
+      setStatus('Copied. Paste it into any Bluesky thread.');
+    } catch {
+      setStatus('Copy this link: ' + genericLink());
+    }
+  });
+  $('finder-cancel').addEventListener('click', () => {
+    ++loadToken;
+    finder.close();
+    if ($('player').hidden) setStatus('Stopped. Paste a thread’s link above to make a cartoon.');
+  });
+
   const params = new URLSearchParams(location.search);
   const t = params.get('t');
   if (params.get('from') === 'root') document.querySelector('input[name=from][value="root"]').click();
   if (t) {
     $('thread-url').value = t;
     loadThread(t);
+  } else if (params.has(GENERIC_PARAM)) {
+    findThreadFromLink();
   }
 }
 
 boot();
 
 // for poking at from the console
-window.threadformed = { player, stage, narrator, current: () => current, webUrlFor };
+window.threadformed = { player, stage, narrator, current: () => current, webUrlFor, findThreadFromLink };

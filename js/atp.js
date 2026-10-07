@@ -278,6 +278,21 @@ export function getPostThread(uri) {
   return query('app.bsky.feed.getPostThread', { uri, depth: 1000, parentHeight: 1000 });
 }
 
+export function getPosts(uris) {
+  return query('app.bsky.feed.getPosts', { uris });
+}
+
+/**
+ * Public posts that link to `url`, newest first. Only api.bsky.app
+ * answers search from a browser (public.api.bsky.app refuses it), and
+ * it needs no sign-in.
+ */
+export function searchPostsLinking(url, limit = 25) {
+  return request('https://api.bsky.app', 'app.bsky.feed.searchPosts', {
+    params: { q: '*', url, sort: 'latest', limit },
+  });
+}
+
 /**
  * Loads an image blob straight from the author's PDS. Bluesky's CDN
  * doesn't send CORS headers, and a canvas with a non-CORS image in it

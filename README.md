@@ -45,20 +45,44 @@ Options:
 
 ## Linking to it from a Bluesky thread
 
-Any link of the form
+**One link for every thread.** Post this in any thread, at any time:
+
+```
+https://jsherman999.github.io/how_is_bluesky_formed-/?thread
+```
+
+Browsers don't tell a page which post a link was clicked in. So when the
+page opens with `?thread`, it asks Bluesky's public search which threads
+contain that link, and then:
+
+- **If there's one thread,** it loads that whole thread from the top, as
+  it stands at the moment of the click, and waits for play.
+- **If the link is in several threads,** it lists them, newest first,
+  with each thread's opening post, and asks which one you came from.
+  After loading, a "Wrong thread?" link brings the list back.
+- **If search hasn't caught up yet** (new posts can take up to a minute),
+  it says so and checks again after 5, 10 and 15 seconds.
+
+A panel shows each step while this happens, with a Cancel button. It also
+says the page only reads public posts and doesn't touch the visitor's
+device. A post that is nothing but the link gets the line "how is thread
+formed?" when its caveman's turn comes.
+
+**Links for one specific thread.** A link of the form
 `https://jsherman999.github.io/how_is_bluesky_formed-/?t=<bsky.app post link>`
-opens the page with that thread already loaded and waiting for play.
-**Copy link** gives you that link for the thread on screen.
+skips the search and opens that thread directly. **Copy link** gives you
+one for the thread on screen.
 
-**Post link in thread** does it for you. When you're signed in, it
-replies to the post you loaded with the text **how is thread formed?**.
-The whole text is the link, and a preview card with the cartoon image
-sits under it. A dialog shows the reply before anything is posted.
+**Post link in thread.** When you're signed in, this button replies to
+the loaded post with the text **how is thread formed?**. The whole text
+is the link, and a preview card with the cartoon image sits under it. It
+uses the direct `?t=` link, so clicking it never needs a search. A dialog
+shows the reply before anything is posted.
 
-Pasting the link into the Bluesky composer by hand gets the same card,
-because the page carries Open Graph tags pointing at `og.jpg`. Every
-thread uses the same card, since the page is static. To redraw the
-picture, edit `dev/og.html` and follow the commands in its comment.
+**Link card.** Pasting either kind of link into the Bluesky composer gets
+the same card, because the page carries Open Graph tags pointing at
+`og.jpg`. To redraw the picture, edit `dev/og.html` and follow the
+commands in its comment.
 
 ## How the running order and pile-ons work
 

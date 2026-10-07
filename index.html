@@ -17,7 +17,7 @@
 <meta property="og:image:alt" content="Cartoon cavemen ganging up on another caveman, above the words: how is thread formed?">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="css/app.css?v=3">
+<link rel="stylesheet" href="css/app.css?v=4">
 </head>
 <body>
 <header class="masthead">
@@ -37,6 +37,22 @@
     <button type="button" class="btn" id="demo">Demo</button>
   </form>
   <p id="status" class="status" role="status" aria-live="polite"></p>
+
+  <section id="finder" class="finder" hidden>
+    <h2>Finding the thread this link was posted in</h2>
+    <ol id="finder-steps" class="finder-steps" aria-live="polite"></ol>
+    <div id="finder-picker" hidden>
+      <p>This link has been posted in more than one thread. Which one did you come from?</p>
+      <ul id="finder-list" class="finder-list"></ul>
+    </div>
+    <p class="help">This page only reads public Bluesky posts, the same ones anyone can see on bsky.app. It doesn't install or change anything on your device.</p>
+    <div class="row"><button type="button" class="btn btn-small" id="finder-cancel">Cancel</button></div>
+  </section>
+
+  <p id="generic" class="generic">
+    Post <code id="generic-link"></code> in any Bluesky thread. Whoever clicks it gets that thread as a cartoon.
+    <button type="button" class="btn btn-small" id="copy-generic">Copy link</button>
+  </p>
 
   <details id="options" class="panel">
     <summary>Options</summary>
@@ -187,6 +203,6 @@
   <p>Nothing here has a server. Your browser talks directly to Bluesky, and to OpenAI only if you add a key. Inspired by the 2008 cartoon <a href="https://www.youtube.com/watch?v=vun48RsW-3Y" target="_blank" rel="noopener">“How is babby formed?”</a></p>
 </footer>
 
-<script type="module" src="js/app.js?v=3"></script>
+<script type="module" src="js/app.js?v=4"></script>
 </body>
 </html>

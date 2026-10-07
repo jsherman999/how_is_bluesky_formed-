@@ -48,6 +48,18 @@ export function cidFromCdnUrl(url) {
 
 /* ---------------------------------------------------------------- posts */
 
+/** Every URL a post record links to: link facets plus a link-card embed. */
+export function linksIn(record) {
+  const out = [];
+  for (const f of (record && record.facets) || []) {
+    for (const ft of f.features || []) if (ft.uri) out.push(ft.uri);
+  }
+  const e = (record && record.embed) || {};
+  const ext = (e.external || (e.media && e.media.external) || {}).uri;
+  if (ext) out.push(ext);
+  return out;
+}
+
 const ADULT_LABELS = new Set(['porn', 'sexual', 'nudity', 'graphic-media', 'gore', 'nsfl']);
 
 export function normalizePost(p) {
@@ -99,8 +111,55 @@ export function normalizePost(p) {
     quote,
     external,
     hasVideo: media.$type === 'app.bsky.embed.video',
+    links: linksIn(r),
     adult,
   };
+}
+
+/* ---------------------------------------------------------------- finding a thread from a link */
+
+/**
+ * Given search results (post views) for posts linking to this app, the
+ * threads they sit in: one entry per thread, newest link first.
+ * `hostPath` is the app's address without the scheme, e.g.
+ * "someone.github.io/app"; links must contain it.
+ */
+export function threadCandidates(postViews, hostPath) {
+  const byRoot = new Map();
+  for (const p of postViews || []) {
+    const r = p.record || {};
+    if (!linksIn(r).some((u) => u.includes(hostPath))) continue;
+    const rootUri = (r.reply && r.reply.root && r.reply.root.uri) || p.uri;
+    const linkedAt = r.createdAt || p.indexedAt || '';
+    const prev = byRoot.get(rootUri);
+    if (!prev || linkedAt > prev.linkedAt) {
+      byRoot.set(rootUri, { rootUri, linkUri: p.uri, linkedAt, by: (p.author && p.author.handle) || '' });
+    }
+  }
+  return [...byRoot.values()].sort((a, b) => String(b.linkedAt).localeCompare(String(a.linkedAt)));
+}
+
+/**
+ * Posts that are nothing but a link to this app get the line
+ * "how is thread formed?" so their caveman has something to say.
+ */
+export function retitleLinkPosts(tree, hostPath, line = 'how is thread formed?') {
+  const host = hostPath.split('/')[0].toLowerCase();
+  const visit = (node) => {
+    const p = node.post;
+    if (p.links && p.links.some((u) => u.includes(hostPath))) {
+      const rest = p.text
+        .split(/\s+/)
+        .filter((w) => !w.toLowerCase().includes(host))
+        .join(' ')
+        .replace(/how is thread formed\??/gi, '');
+      if (!/[\p{L}\p{N}]/u.test(rest)) p.text = line;
+    }
+    node.children.forEach(visit);
+  };
+  tree.ancestors.forEach(visit);
+  visit(tree.focus);
+  return tree;
 }
 
 /* ---------------------------------------------------------------- tree */
