@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https:; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<title>How Is Thread Formed?</title>
+<meta name="description" content="Paste a Bluesky thread and watch cavemen act it out, shoving each other off screen to have their say.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/app.css?v=2">
+</head>
+<body>
+<header class="masthead">
+  <canvas id="logo" width="160" height="160" aria-hidden="true"></canvas>
+  <div>
+    <h1>How Is Thread Formed?</h1>
+    <p class="tagline">Paste a Bluesky thread. Cavemen act it out.</p>
+  </div>
+</header>
+
+<main>
+  <form id="thread-form" class="ask" novalidate>
+    <label for="thread-url" class="sr-only">Bluesky thread link</label>
+    <input id="thread-url" name="thread" type="text" inputmode="url" autocomplete="off" spellcheck="false"
+           placeholder="https://bsky.app/profile/someone.bsky.social/post/…">
+    <button type="submit" class="btn btn-primary" id="go">Form thread</button>
+    <button type="button" class="btn" id="demo">Demo</button>
+  </form>
+  <p id="status" class="status" role="status" aria-live="polite"></p>
+
+  <details id="options" class="panel">
+    <summary>Options</summary>
+    <div class="opt-grid">
+      <section>
+        <h3>Bluesky sign-in <span class="muted">optional</span></h3>
+        <p class="help">Public threads load without signing in. Sign in to include posts from accounts that hide from logged-out viewers, and to get a YOU tag over your caveman.</p>
+        <div id="signed-out">
+          <label>Handle <input id="bsky-handle" type="text" autocomplete="username" placeholder="you.bsky.social" spellcheck="false"></label>
+          <label>App password <input id="bsky-pass" type="password" autocomplete="current-password" placeholder="xxxx-xxxx-xxxx-xxxx"></label>
+          <label class="check"><input id="bsky-keep" type="checkbox"> Keep me signed in for this tab</label>
+          <div class="row">
+            <button type="button" class="btn" id="sign-in">Sign in</button>
+            <a href="https://bsky.app/settings/app-passwords" target="_blank" rel="noopener">Make an app password</a>
+          </div>
+          <p class="help">Use an <strong>app password</strong>, not your main one. It goes straight to your own Bluesky server and is never stored.</p>
+        </div>
+        <div id="signed-in" hidden>
+          <p>Signed in as <strong id="me"></strong></p>
+          <button type="button" class="btn" id="sign-out">Sign out</button>
+        </div>
+      </section>
+
+      <section>
+        <h3>Voices</h3>
+        <fieldset class="radios">
+          <legend class="sr-only">Voice engine</legend>
+          <label class="check"><input type="radio" name="voice" value="browser" checked> Browser voices <span class="muted">free</span></label>
+          <label class="check"><input type="radio" name="voice" value="openai"> OpenAI voices <span class="muted">your key</span></label>
+          <label class="check"><input type="radio" name="voice" value="off"> Silent</label>
+        </fieldset>
+        <label id="model-row">OpenAI voice model <select id="tts-model"></select></label>
+        <div class="subhead">OpenAI key <span class="muted">optional</span></div>
+        <label class="sr-only" for="openai-key">OpenAI API key</label>
+        <input id="openai-key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-…">
+        <label class="check"><input id="openai-remember" type="checkbox"> Remember the key on this device</label>
+        <label class="check"><input id="use-stance" type="checkbox" checked> Use it to tell attacks from agreement</label>
+        <div class="row"><button type="button" class="btn btn-small" id="check-key">Check key</button> <span id="key-status" class="muted" role="status"></span></div>
+        <p class="help">A key unlocks OpenAI voices, video recording with sound, and smarter pile-on spotting (one cheap call per thread). It stays in this browser.</p>
+        <label>Speed
+          <select id="speed">
+            <option value="0.8">Slow, like the original</option>
+            <option value="1" selected>Normal</option>
+            <option value="1.25">Faster</option>
+            <option value="1.5">Fast</option>
+          </select>
+        </label>
+      </section>
+
+      <section>
+        <h3>Thread</h3>
+        <fieldset class="radios">
+          <legend>If the link is a reply, start from</legend>
+          <label class="check"><input type="radio" name="from" value="post" checked> That reply and what led to it</label>
+          <label class="check"><input type="radio" name="from" value="root"> The very top of the thread</label>
+        </fieldset>
+        <label>Most posts to act out
+          <select id="max-posts">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="40">40</option>
+            <option value="80">80</option>
+            <option value="0">All of them</option>
+          </select>
+        </label>
+        <label class="check"><input id="tags" type="checkbox" checked> Name tags on the mob</label>
+      </section>
+    </div>
+  </details>
+
+  <section id="player" class="player" hidden>
+    <div class="screen">
+      <canvas id="stage" width="1280" height="720" aria-label="Cartoon of the thread"></canvas>
+      <button type="button" id="big-play" class="big-play" aria-label="Play">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <div id="rec-badge" class="rec-badge" hidden>● REC</div>
+    </div>
+    <div class="controls">
+      <button type="button" class="ctl" id="prev" aria-label="Previous post" title="Previous (←)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+      </button>
+      <button type="button" class="ctl ctl-main" id="play" aria-label="Play" title="Play / pause (space)">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="i-play"><path d="M8 5v14l11-7z"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="i-pause"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+      </button>
+      <button type="button" class="ctl" id="next" aria-label="Next post" title="Next (→)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+      </button>
+      <input type="range" id="scrub" min="0" max="0" value="0" aria-label="Jump to post">
+      <span id="counter" class="counter">0 / 0</span>
+      <button type="button" class="ctl" id="mute" aria-label="Mute" title="Mute">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="i-sound"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="i-muted"><path d="M16.5 12A4.5 4.5 0 0 0 14 8v2.2l2.5 2.5V12zM19 12c0 .9-.2 1.8-.5 2.6l1.5 1.5A8.9 8.9 0 0 0 21 12a9 9 0 0 0-7-8.8v2.1A7 7 0 0 1 19 12zM4.3 3 3 4.3 7.7 9H3v6h4l5 5v-6.7l4.3 4.3c-.7.5-1.4.9-2.3 1.2v2.1a9 9 0 0 0 3.7-1.8L19.7 21 21 19.7 4.3 3zM12 4 9.9 6.1 12 8.2V4z"/></svg>
+      </button>
+      <button type="button" class="btn btn-small" id="record" title="Save as a video file">Record video</button>
+      <button type="button" class="btn btn-small" id="share" title="Copy a link that replays this thread">Copy link</button>
+    </div>
+  </section>
+
+  <section id="below" class="below" hidden>
+    <div class="cast-wrap">
+      <h2>Cast <span id="cast-count" class="muted"></span></h2>
+      <ul id="cast" class="cast"></ul>
+    </div>
+    <div class="order-wrap">
+      <h2>Running order</h2>
+      <ol id="order" class="order"></ol>
+    </div>
+  </section>
+
+  <dialog id="rec-dialog">
+    <form method="dialog">
+      <h3>Record without voices?</h3>
+      <p>Browser voices play live but can't be captured into a video file, so the video will only have the shove sounds. Choose <strong>OpenAI voices</strong> in Options to record with speech.</p>
+      <div class="row end">
+        <button value="cancel" class="btn">Cancel</button>
+        <button value="go" class="btn btn-primary">Record anyway</button>
+      </div>
+    </form>
+  </dialog>
+</main>
+
+<footer class="foot">
+  <p>Nothing here has a server. Your browser talks directly to Bluesky, and to OpenAI only if you add a key. Inspired by the 2008 cartoon <a href="https://www.youtube.com/watch?v=vun48RsW-3Y" target="_blank" rel="noopener">“How is babby formed?”</a></p>
+</footer>
+
+<script type="module" src="js/app.js?v=2"></script>
+</body>
+</html>
