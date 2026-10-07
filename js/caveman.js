@@ -3,7 +3,7 @@
 // facing +x, about 300 units tall). The caller handles position, scale,
 // mirroring and rotation.
 
-import { hash32, rng, pick, range, shade } from './util.js';
+import { hash32, rng, pick, range, shade } from './util.js?v=7';
 
 const OUTLINE = '#1c120c';
 const OL = 3.6;
@@ -64,6 +64,7 @@ export function defaultPose() {
     anger: 0,
     weapon: false,       // draw the look's weapon in the front hand
     headTilt: 0,
+    still: false,        // no idle breathing bob
   };
 }
 
@@ -529,7 +530,7 @@ export function drawCaveman(ctx, look, pose) {
   const B = look.build, H = look.height;
   const skin = look.skin, skinBack = shade(skin, -0.18);
   const hipY = -92 * H;
-  const bob = pose.walk != null ? -Math.abs(Math.sin(pose.walk)) * 7 : Math.sin(pose.t * 2.2) * 1.5;
+  const bob = pose.walk != null ? -Math.abs(Math.sin(pose.walk)) * 7 : pose.still ? 0 : Math.sin(pose.t * 2.2) * 1.5;
 
   ctx.save();
   // soft ground shadow

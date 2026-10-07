@@ -43,6 +43,16 @@ Options:
   branch (what led to it plus its replies) or the whole thread from the
   top. The post limit keeps the liveliest branches.
 
+## The thread map
+
+Under the player, the thread is drawn as a tree. Each post is a node
+showing its poster's caveman face, linked to the post it replies to. A
+blue ring marks the post being acted out and follows playback, and posts
+still to come are faded. Orange lines are pile-on attacks, and an orange
+ring marks a post being piled on. Click any face (or Tab to it and press
+Enter) to start the cartoon there. Narrow trees are enlarged to fill the
+panel; big ones scroll, and the map keeps the current post in view.
+
 ## Linking to it from a Bluesky thread
 
 **One link for every thread.** Post this in any thread, at any time:
@@ -124,6 +134,11 @@ python3 -m http.server 8426
 Then open http://localhost:8426. `dev/lineup.html` shows a row of cavemen
 in every pose, which is handy when tweaking `js/caveman.js`.
 
+Every module import and the stylesheet carry a `?v=` cache-buster.
+GitHub Pages caches files for 10 minutes, and without it browsers can mix
+old and new modules. Run `dev/bump-version.sh` before pushing changes to
+`css/` or `js/`.
+
 Tests (thread parsing, ordering, pile-on detection, layouts):
 
 ```bash
@@ -137,6 +152,7 @@ node --test tests/thread.test.mjs
 | `js/caveman.js` | Procedural cavemen, a stable look per account DID |
 | `js/scene.js` | Prehistoric backdrop, smoke, pterodactyl |
 | `js/card.js` | The scrolling Bluesky post under the scene |
+| `js/threadmap.js` | The clickable thread map under the player |
 | `js/voice.js` | Browser speech and OpenAI clips behind one interface |
 | `js/player.js` | Beat timing: enter, speak, hold, next |
 | `js/audio.js` | Web Audio graph for clips and shove sounds, feeds the recorder |

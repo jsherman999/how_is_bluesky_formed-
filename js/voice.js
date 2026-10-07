@@ -6,9 +6,9 @@
 // speak(beat) returns a Line with progress(), level(), pause(), resume(),
 // cancel() and a `done` promise.
 
-import { speechText, estimateSpeechSeconds } from './thread.js';
-import { hash32, noise1 } from './util.js';
-import { synthesize, voicesFor } from './openai.js';
+import { speechText, estimateSpeechSeconds } from './thread.js?v=7';
+import { hash32, noise1 } from './util.js?v=7';
+import { synthesize, voicesFor } from './openai.js?v=7';
 
 const NOVELTY = /^(Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Good News|Jester|Organ|Pipe Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox)\b/i;
 const PITCHES = [0.85, 1.15, 0.7, 1.3, 1.0, 0.78, 1.22, 0.92, 1.08];

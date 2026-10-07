@@ -161,3 +161,18 @@ test('link-only posts get a line to say', () => {
   assert.equal(a.post.text, 'how is thread formed?');
   assert.equal(b.post.text, 'lol watch this jsherman999.github.io/how_is_blu...');
 });
+
+test('thread map layout: parents centred over their replies, depth by reply level', async () => {
+  const { layoutTree } = await import('../js/threadmap.js');
+  const beats = demoBeats();
+  const L = layoutTree(beats);
+  const id = (k) => beats.findIndex((b) => b.post.uri.endsWith('/' + k));
+  assert.deepEqual(L.roots, [0]);
+  assert.equal(L.pos[id('r')].depth, 0);
+  assert.equal(L.pos[id('u3')].depth, 6);
+  assert.equal(L.maxDepth, 6);
+  // u2 has three replies (m1, b1, t2): it sits over the middle one
+  assert.equal(L.pos[id('u2')].col, L.pos[id('b1')].col);
+  // every column is used once by a leaf
+  assert.equal(L.cols, beats.filter((_, i) => !L.kids[i].length).length);
+});

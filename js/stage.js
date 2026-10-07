@@ -1,10 +1,10 @@
 // The director: decides who stands where for each beat, animates the
 // shoves and the mob, runs the slow zoom, and paints each frame.
 
-import { makeLook, drawCaveman, defaultPose, faceOffset, headTop } from './caveman.js';
-import { SCENE_W, SCENE_H, GROUND_Y, getBackdrop, drawAmbient } from './scene.js';
-import { Card, FRAME_W, FRAME_H } from './card.js';
-import { clamp, lerp, ease, seg, noise1, hash32 } from './util.js';
+import { makeLook, drawCaveman, defaultPose, faceOffset, headTop } from './caveman.js?v=7';
+import { SCENE_W, SCENE_H, GROUND_Y, getBackdrop, drawAmbient } from './scene.js?v=7';
+import { Card, FRAME_W, FRAME_H } from './card.js?v=7';
+import { clamp, lerp, ease, seg, noise1, hash32 } from './util.js?v=7';
 
 /* ------------------------------------------------------------ layout */
 
@@ -416,8 +416,8 @@ export class Stage {
       p.lean = -0.1;
       p.squash = 0.93;
       p.sweat = clamp((size - 1) / 3, 0.35, 1);
-      p.mouth = 0.12 + 0.1 * Math.abs(Math.sin(t * 23));
-      a.tremble = Math.sin(t * 61) * Math.min(4, size) * 0.9;
+      p.mouth = 0.15;
+      p.still = true; // cornered, frozen in place
       return p;
     }
 

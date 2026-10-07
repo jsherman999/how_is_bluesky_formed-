@@ -104,6 +104,18 @@ export class Player {
     this.onState(this.state());
   }
 
+  /** Start playing at beat i: a shove if we're mid-show, a fresh entrance if not. */
+  playFrom(i) {
+    if (!this.beats.length) return;
+    i = Math.max(0, Math.min(this.beats.length - 1, i));
+    this.cancelLine();
+    if (!this.playing || this.phase === 'ready' || this.phase === 'ended') this.stage.clear();
+    this.playing = true;
+    this.showBeat(i, false);
+    this.phase = 'enter';
+    this.onState(this.state());
+  }
+
   next() { this.jump(this.index + 1); }
   prev() { this.jump(this.index - 1); }
 

@@ -17,14 +17,14 @@
 <meta property="og:image:alt" content="Cartoon cavemen ganging up on another caveman, above the words: how is thread formed?">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="css/app.css?v=4">
+<link rel="stylesheet" href="css/app.css?v=7">
 </head>
 <body>
 <header class="masthead">
   <canvas id="logo" width="160" height="160" aria-hidden="true"></canvas>
   <div>
     <h1>How Is Thread Formed?</h1>
-    <p class="tagline">Paste a Bluesky thread. Cavemen act it out.</p>
+    <p class="tagline">Paste a Bluesky thread.</p>
   </div>
 </header>
 
@@ -155,13 +155,19 @@
   </section>
 
   <section id="below" class="below" hidden>
+    <div class="map-wrap">
+      <h2>Thread map <span class="muted">click a face to play from there</span></h2>
+      <div id="map" class="map"></div>
+      <p class="map-key">
+        <span><i class="k-now"></i> now playing</span>
+        <span><i class="k-attack"></i> piling on</span>
+        <span><i class="k-target"></i> being piled on</span>
+        <span><i class="k-next"></i> still to come</span>
+      </p>
+    </div>
     <div class="cast-wrap">
       <h2>Cast <span id="cast-count" class="muted"></span></h2>
       <ul id="cast" class="cast"></ul>
-    </div>
-    <div class="order-wrap">
-      <h2>Running order</h2>
-      <ol id="order" class="order"></ol>
     </div>
   </section>
 
@@ -203,6 +209,6 @@
   <p>Nothing here has a server. Your browser talks directly to Bluesky, and to OpenAI only if you add a key. Inspired by the 2008 cartoon <a href="https://www.youtube.com/watch?v=vun48RsW-3Y" target="_blank" rel="noopener">“How is babby formed?”</a></p>
 </footer>
 
-<script type="module" src="js/app.js?v=4"></script>
+<script type="module" src="js/app.js?v=7"></script>
 </body>
 </html>

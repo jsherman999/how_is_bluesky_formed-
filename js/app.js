@@ -1,18 +1,19 @@
-// Page wiring: the form, options, player controls, cast and running order.
+// Page wiring: the form, options, player controls, thread map and cast.
 
-import * as atp from './atp.js';
+import * as atp from './atp.js?v=7';
 import {
   parseThreadLink, postUri, buildTree, orderPosts, makeBeats, makeCast,
   analyzePileOns, countPosts, cidFromCdnUrl, webUrlFor, threadCandidates, retitleLinkPosts,
-} from './thread.js';
-import { Stage } from './stage.js';
-import { Narrator } from './voice.js';
-import { AudioHub } from './audio.js';
-import { Recorder } from './recorder.js';
-import { Player } from './player.js';
-import { makeLook, drawPortrait } from './caveman.js';
-import { TTS_MODELS, listModelIds, pickChatModel, classifyStances, verifyKey } from './openai.js';
-import { demoThread } from './demo.js';
+} from './thread.js?v=7';
+import { Stage } from './stage.js?v=7';
+import { Narrator } from './voice.js?v=7';
+import { AudioHub } from './audio.js?v=7';
+import { Recorder } from './recorder.js?v=7';
+import { Player } from './player.js?v=7';
+import { makeLook, drawPortrait } from './caveman.js?v=7';
+import { TTS_MODELS, listModelIds, pickChatModel, classifyStances, verifyKey } from './openai.js?v=7';
+import { demoThread } from './demo.js?v=7';
+import { ThreadMap } from './threadmap.js?v=7';
 
 const $ = (id) => document.getElementById(id);
 const PREFS_KEY = 'threadformed.prefs.v2'; // v2: defaults changed to fast + browser voices
@@ -89,6 +90,13 @@ const player = new Player({
   onBeat: (i) => highlightBeat(i),
   onState: (s) => syncControls(s),
   onEnd: () => finishRecording(),
+});
+
+const map = new ThreadMap($('map'), {
+  onPick: (i) => {
+    hub.ensure();
+    player.playFrom(i);
+  },
 });
 
 /* ------------------------------------------------------------ prefs + options */
@@ -308,7 +316,7 @@ async function present(tree, { link, replyTo = null, demo, token, autoplay, from
   $('scrub').max = String(Math.max(0, beats.length - 1));
   syncReplyButton();
   renderCast();
-  renderOrder();
+  map.render(beats);
   highlightBeat(0);
 
   const parts = [`${beats.length} post${beats.length === 1 ? '' : 's'}`, `${cast.size} cavem${cast.size === 1 ? 'an' : 'en'}`];
@@ -507,7 +515,7 @@ async function openCandidate(c, token) {
   if (token === loadToken) finder.close();
 }
 
-/* ------------------------------------------------------------ cast + order */
+/* ------------------------------------------------------------ cast */
 
 function renderCast() {
   const ul = $('cast');
@@ -549,51 +557,8 @@ function renderCast() {
   }
 }
 
-function renderOrder() {
-  const ol = $('order');
-  ol.textContent = '';
-  const name = (did) => (current.cast.get(did) || {}).handle || 'someone';
-  let lastEp = -1;
-  current.beats.forEach((b, i) => {
-    const li = document.createElement('li');
-    li.dataset.i = String(i);
-    const body = document.createElement('div');
-    const line1 = document.createElement('div');
-    line1.className = 'line1';
-    const who = document.createElement('b');
-    who.textContent = '@' + b.post.handle;
-    line1.append(who);
-    if (b.targetHandle) line1.append(` → @${b.targetHandle}`);
-    const snip = document.createElement('div');
-    snip.className = 'snippet';
-    snip.textContent = b.post.text || (b.post.images.length ? '[picture]' : '[no text]');
-    body.append(line1, snip);
-    li.append(body);
-    if (b.pile) {
-      li.classList.add('pile');
-      if (b.pile.episode !== lastEp) {
-        const note = document.createElement('div');
-        note.className = 'pile-note';
-        const ep = current.episodes[b.pile.episode];
-        note.textContent = `Pile-on: ${ep.attackers.length} vs @${name(ep.target)}`;
-        li.append(note);
-        lastEp = b.pile.episode;
-      }
-    }
-    li.addEventListener('click', () => player.jump(i));
-    ol.append(li);
-  });
-}
-
 function highlightBeat(i) {
-  for (const li of $('order').querySelectorAll('li.current')) li.classList.remove('current');
-  const li = $('order').querySelector(`li[data-i="${i}"]`);
-  if (li) {
-    li.classList.add('current');
-    const box = $('order');
-    const r = li.getBoundingClientRect(), br = box.getBoundingClientRect();
-    if (r.top < br.top || r.bottom > br.bottom) box.scrollTop += r.top - br.top - 40;
-  }
+  map.setCurrent(i);
   $('scrub').value = String(i);
   $('counter').textContent = `${i + 1} / ${current.beats.length}`;
 }
