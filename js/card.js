@@ -2,8 +2,8 @@
 // Bluesky post sitting where the Yahoo Answers page was in the original.
 // Text scrolls along with the speech.
 
-import { clamp, lerp } from './util.js?v=7';
-import { SCENE_H } from './scene.js?v=7';
+import { clamp, lerp } from './util.js?v=8';
+import { SCENE_H } from './scene.js?v=8';
 
 export const FRAME_W = 1280;
 export const FRAME_H = 720;

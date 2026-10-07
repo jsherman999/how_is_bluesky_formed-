@@ -1,10 +1,10 @@
 // The director: decides who stands where for each beat, animates the
 // shoves and the mob, runs the slow zoom, and paints each frame.
 
-import { makeLook, drawCaveman, defaultPose, faceOffset, headTop } from './caveman.js?v=7';
-import { SCENE_W, SCENE_H, GROUND_Y, getBackdrop, drawAmbient } from './scene.js?v=7';
-import { Card, FRAME_W, FRAME_H } from './card.js?v=7';
-import { clamp, lerp, ease, seg, noise1, hash32 } from './util.js?v=7';
+import { makeLook, drawCaveman, defaultPose, faceOffset, headTop } from './caveman.js?v=8';
+import { SCENE_W, SCENE_H, GROUND_Y, getBackdrop, drawAmbient } from './scene.js?v=8';
+import { Card, FRAME_W, FRAME_H } from './card.js?v=8';
+import { clamp, lerp, ease, seg, noise1, hash32 } from './util.js?v=8';
 
 /* ------------------------------------------------------------ layout */
 

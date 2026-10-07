@@ -3,7 +3,7 @@
 // facing +x, about 300 units tall). The caller handles position, scale,
 // mirroring and rotation.
 
-import { hash32, rng, pick, range, shade } from './util.js?v=7';
+import { hash32, rng, pick, range, shade } from './util.js?v=8';
 
 const OUTLINE = '#1c120c';
 const OL = 3.6;

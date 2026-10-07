@@ -2,7 +2,7 @@
 // then drawn through the camera each frame, plus a few live touches
 // (volcano smoke, a passing pterodactyl).
 
-import { rng, shade } from './util.js?v=7';
+import { rng, shade } from './util.js?v=8';
 
 export const SCENE_W = 1280;
 export const SCENE_H = 420;

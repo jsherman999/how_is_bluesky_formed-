@@ -1,19 +1,19 @@
 // Page wiring: the form, options, player controls, thread map and cast.
 
-import * as atp from './atp.js?v=7';
+import * as atp from './atp.js?v=8';
 import {
   parseThreadLink, postUri, buildTree, orderPosts, makeBeats, makeCast,
   analyzePileOns, countPosts, cidFromCdnUrl, webUrlFor, threadCandidates, retitleLinkPosts,
-} from './thread.js?v=7';
-import { Stage } from './stage.js?v=7';
-import { Narrator } from './voice.js?v=7';
-import { AudioHub } from './audio.js?v=7';
-import { Recorder } from './recorder.js?v=7';
-import { Player } from './player.js?v=7';
-import { makeLook, drawPortrait } from './caveman.js?v=7';
-import { TTS_MODELS, listModelIds, pickChatModel, classifyStances, verifyKey } from './openai.js?v=7';
-import { demoThread } from './demo.js?v=7';
-import { ThreadMap } from './threadmap.js?v=7';
+} from './thread.js?v=8';
+import { Stage } from './stage.js?v=8';
+import { Narrator } from './voice.js?v=8';
+import { AudioHub } from './audio.js?v=8';
+import { Recorder } from './recorder.js?v=8';
+import { Player } from './player.js?v=8';
+import { makeLook, drawPortrait } from './caveman.js?v=8';
+import { TTS_MODELS, listModelIds, pickChatModel, classifyStances, verifyKey } from './openai.js?v=8';
+import { demoThread } from './demo.js?v=8';
+import { ThreadMap } from './threadmap.js?v=8';
 
 const $ = (id) => document.getElementById(id);
 const PREFS_KEY = 'threadformed.prefs.v2'; // v2: defaults changed to fast + browser voices
@@ -326,7 +326,14 @@ async function present(tree, { link, replyTo = null, demo, token, autoplay, from
   if (stanceKnown) msg += ' · pile-ons checked by OpenAI';
   if (demo) msg = 'Demo thread (made up). ' + msg;
   if (note) msg = note + ' ' + msg;
-  setStatus(msg, false, note && lastFind && lastFind.cands.length > 1 ? { text: 'Wrong thread?', onClick: showPicker } : null);
+  // after a ?thread search, offer a way out in case search was a step behind
+  let fix = null;
+  if (note && lastFind) {
+    fix = lastFind.cands.length > 1
+      ? { text: 'Wrong thread?', onClick: showPicker }
+      : { text: 'Wrong thread? Search again', onClick: findThreadFromLink };
+  }
+  setStatus(msg, false, fix);
 
   if (!demo && link) {
     const url = new URL(location.href);

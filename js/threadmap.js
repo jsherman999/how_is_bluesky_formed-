@@ -3,7 +3,7 @@
 // The current post is ringed and the ring follows playback; clicking a
 // face starts the cartoon there. Pile-on attacks are drawn in orange.
 
-import { makeLook, drawPortrait } from './caveman.js?v=7';
+import { makeLook, drawPortrait } from './caveman.js?v=8';
 
 const SVG = 'http://www.w3.org/2000/svg';
 const R = 24;        // node radius
